@@ -1,0 +1,285 @@
+/* Custom CSS for NailCraft Studio */
+
+/* Navigation */
+.nav-link {
+    @apply text-gray-700 hover:text-nail-pink px-3 py-2 rounded-md text-sm font-medium transition-colors;
+}
+
+/* Custom animations */
+@keyframes shimmer {
+    0% {
+        background-position: -200px 0;
+    }
+    100% {
+        background-position: calc(200px + 100%) 0;
+    }
+}
+
+.shimmer {
+    background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+    background-size: 200px 100%;
+    animation: shimmer 1.5s infinite;
+}
+
+/* Design cards */
+.design-card {
+    @apply bg-white rounded-xl shadow-lg overflow-hidden transform transition-all duration-300 hover:scale-105 hover:shadow-xl;
+}
+
+.design-card img {
+    @apply w-full h-48 object-cover;
+    transition: transform 0.3s ease;
+}
+
+.design-card:hover img {
+    transform: scale(1.1);
+}
+
+.price-tag {
+    @apply bg-gradient-to-r from-nail-pink to-premium-purple text-white px-3 py-1 rounded-full text-sm font-semibold;
+}
+
+.premium-badge {
+    @apply absolute top-2 right-2 bg-yellow-400 text-yellow-900 px-2 py-1 rounded-full text-xs font-bold;
+}
+
+/* Buttons */
+.btn-primary {
+    @apply bg-gradient-to-r from-nail-pink to-premium-purple text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300 hover:shadow-lg transform hover:scale-105;
+}
+
+.btn-secondary {
+    @apply border-2 border-nail-pink text-nail-pink px-6 py-3 rounded-lg font-semibold transition-all duration-300 hover:bg-nail-pink hover:text-white;
+}
+
+.btn-eco {
+    @apply bg-gradient-to-r from-eco-green to-green-600 text-white px-6 py-3 rounded-lg font-semibold transition-all duration-300 hover:shadow-lg;
+}
+
+/* Forms */
+.form-input {
+    @apply w-full px-4 py-3 border border-gray-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-nail-pink focus:border-transparent transition-all;
+}
+
+.form-label {
+    @apply block text-sm font-medium text-gray-700 mb-2;
+}
+
+/* Modal styles */
+.modal-overlay {
+    @apply fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50;
+}
+
+.modal-content {
+    @apply bg-white rounded-xl max-w-md w-full max-h-screen overflow-y-auto;
+}
+
+.modal-header {
+    @apply px-6 py-4 border-b border-gray-200;
+}
+
+.modal-body {
+    @apply px-6 py-4;
+}
+
+.modal-footer {
+    @apply px-6 py-4 border-t border-gray-200 flex justify-end space-x-3;
+}
+
+/* Cart styles */
+.cart-item {
+    @apply flex items-center space-x-4 p-4 border-b border-gray-200 last:border-b-0;
+}
+
+.cart-item img {
+    @apply w-16 h-16 object-cover rounded-lg;
+}
+
+.quantity-controls {
+    @apply flex items-center space-x-2;
+}
+
+.quantity-btn {
+    @apply w-8 h-8 rounded-full bg-gray-200 hover:bg-gray-300 flex items-center justify-center text-sm font-bold transition-colors;
+}
+
+/* Loading states */
+.loading-spinner {
+    @apply inline-block w-4 h-4 border-2 border-gray-200 border-t-nail-pink rounded-full animate-spin;
+}
+
+.loading-skeleton {
+    @apply animate-pulse bg-gray-200 rounded;
+}
+
+/* Eco-friendly theme */
+.eco-badge {
+    @apply bg-gradient-to-r from-eco-green to-green-600 text-white px-3 py-1 rounded-full text-xs font-semibold flex items-center space-x-1;
+}
+
+/* Subscription badges */
+.subscription-badge {
+    @apply bg-gradient-to-r from-premium-purple to-purple-600 text-white px-3 py-1 rounded-full text-xs font-semibold;
+}
+
+/* Custom scrollbar */
+.custom-scrollbar {
+    scrollbar-width: thin;
+    scrollbar-color: #f472b6 #f1f5f9;
+}
+
+.custom-scrollbar::-webkit-scrollbar {
+    width: 6px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-track {
+    background: #f1f5f9;
+    border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb {
+    background: linear-gradient(45deg, #f472b6, #8b5cf6);
+    border-radius: 3px;
+}
+
+.custom-scrollbar::-webkit-scrollbar-thumb:hover {
+    background: linear-gradient(45deg, #ec4899, #7c3aed);
+}
+
+/* Notification styles */
+.notification {
+    @apply fixed top-4 right-4 max-w-sm w-full bg-white border border-gray-200 rounded-lg shadow-lg p-4 z-50 transform transition-all duration-300;
+}
+
+.notification.success {
+    @apply border-green-200 bg-green-50;
+}
+
+.notification.error {
+    @apply border-red-200 bg-red-50;
+}
+
+.notification.warning {
+    @apply border-yellow-200 bg-yellow-50;
+}
+
+/* Mobile responsive adjustments */
+@media (max-width: 768px) {
+    .design-card {
+        @apply hover:scale-100;
+    }
+    
+    .btn-primary, .btn-secondary, .btn-eco {
+        @apply text-sm px-4 py-2;
+    }
+    
+    .modal-content {
+        @apply mx-2;
+    }
+}
+
+/* Dark mode support (optional) */
+@media (prefers-color-scheme: dark) {
+    .design-card {
+        @apply bg-gray-800 text-white;
+    }
+    
+    .form-input {
+        @apply bg-gray-800 border-gray-600 text-white;
+    }
+    
+    .modal-content {
+        @apply bg-gray-800 text-white;
+    }
+}
+
+/* Custom nail art specific styles */
+.nail-shape {
+    @apply w-8 h-10 bg-gradient-to-t from-gray-200 to-white rounded-t-full border border-gray-300 cursor-pointer transition-all;
+}
+
+.nail-shape.selected {
+    @apply border-nail-pink border-2 bg-gradient-to-t from-nail-pink to-pink-200;
+}
+
+.color-swatch {
+    @apply w-8 h-8 rounded-full border-2 border-gray-300 cursor-pointer transition-all hover:scale-110;
+}
+
+.color-swatch.selected {
+    @apply border-gray-800 border-4;
+}
+
+/* Progress steps */
+.progress-step {
+    @apply flex items-center space-x-2 text-sm;
+}
+
+.progress-step.completed {
+    @apply text-green-600;
+}
+
+.progress-step.current {
+    @apply text-nail-pink font-semibold;
+}
+
+.progress-step.pending {
+    @apply text-gray-400;
+}
+
+/* Rating stars */
+.star-rating {
+    @apply flex items-center space-x-1;
+}
+
+.star {
+    @apply text-gray-300 hover:text-yellow-400 cursor-pointer transition-colors;
+}
+
+.star.filled {
+    @apply text-yellow-400;
+}
+
+/* Tooltips */
+.tooltip {
+    @apply absolute z-10 px-3 py-2 text-sm text-white bg-gray-900 rounded-lg shadow-lg opacity-0 invisible transition-all duration-200;
+}
+
+.tooltip.show {
+    @apply opacity-100 visible;
+}
+
+/* Custom grid layouts */
+.design-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 1.5rem;
+}
+
+@media (max-width: 640px) {
+    .design-grid {
+        grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+        gap: 1rem;
+    }
+}
+
+/* Floating action button */
+.fab {
+    @apply fixed bottom-6 right-6 w-14 h-14 bg-gradient-to-r from-nail-pink to-premium-purple text-white rounded-full shadow-lg flex items-center justify-center z-40 transition-all duration-300 hover:scale-110;
+}
+
+/* Image zoom effect */
+.image-zoom {
+    @apply cursor-zoom-in transition-transform duration-300;
+}
+
+.image-zoom:hover {
+    transform: scale(1.05);
+}
+
+/* Glassmorphism effect */
+.glass {
+    backdrop-filter: blur(10px);
+    background: rgba(255, 255, 255, 0.1);
+    border: 1px solid rgba(255, 255, 255, 0.2);
+}
