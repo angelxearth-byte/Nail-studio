@@ -8,25 +8,405 @@ class NailCraftApp {
         this.categories = [];
         this.currentPage = 1;
         this.isLoading = false;
+        this.currentFilter = 'all';
+        this.searchTimeout = null;
+        this.wishlist = [];
         
         this.init();
     }
 
     async init() {
-        // Check if user is authenticated
-        await this.checkAuthStatus();
+        // Add loading overlay
+        this.showPageLoader();
         
-        // Load initial data
-        await this.loadCategories();
-        await this.loadFeaturedDesigns();
+        try {
+            // Check if user is authenticated
+            await this.checkAuthStatus();
+            
+            // Load initial data
+            await this.loadCategories();
+            await this.loadFeaturedDesigns();
+            
+            // Setup event listeners
+            this.setupEventListeners();
+            this.setupModernInteractions();
+            
+            // Update cart count
+            await this.updateCartCount();
+            
+            // Initialize animations
+            this.initializeAnimations();
+            
+            console.log('NailCraft Studio initialized');
+        } finally {
+            // Hide loading overlay
+            this.hidePageLoader();
+        }
+    }
+
+    showPageLoader() {
+        const loader = document.createElement('div');
+        loader.id = 'page-loader';
+        loader.className = 'fixed inset-0 bg-white/90 backdrop-blur-sm flex items-center justify-center z-[100]';
+        loader.innerHTML = `
+            <div class="text-center">
+                <div class="w-16 h-16 bg-gradient-to-r from-primary to-secondary rounded-2xl flex items-center justify-center mb-4 animate-pulse-soft mx-auto">
+                    <i class="fas fa-gem text-white text-xl"></i>
+                </div>
+                <div class="text-lg font-semibold text-dark mb-2">Loading NailCraft Studio</div>
+                <div class="w-32 h-1 bg-gray-200 rounded-full overflow-hidden mx-auto">
+                    <div class="h-full bg-gradient-to-r from-primary to-secondary rounded-full animate-pulse"></div>
+                </div>
+            </div>
+        `;
+        document.body.appendChild(loader);
+    }
+
+    hidePageLoader() {
+        setTimeout(() => {
+            const loader = document.getElementById('page-loader');
+            if (loader) {
+                loader.style.opacity = '0';
+                setTimeout(() => loader.remove(), 300);
+            }
+        }, 500);
+    }
+
+    initializeAnimations() {
+        // Add entrance animations to elements
+        const animateOnScroll = () => {
+            const elements = document.querySelectorAll('[data-animate]');
+            elements.forEach(el => {
+                const rect = el.getBoundingClientRect();
+                if (rect.top < window.innerHeight * 0.8) {
+                    el.classList.add('animate-fade-in');
+                    el.style.animationDelay = el.dataset.delay || '0s';
+                }
+            });
+        };
+
+        window.addEventListener('scroll', animateOnScroll);
+        animateOnScroll(); // Run once on load
+    }
+
+    setupModernInteractions() {
+        // Category filter interactions
+        this.setupCategoryFilters();
         
-        // Setup event listeners
-        this.setupEventListeners();
+        // Search functionality
+        this.setupSearch();
         
-        // Update cart count
-        await this.updateCartCount();
+        // Wishlist functionality
+        this.setupWishlist();
         
-        console.log('NailCraft Studio initialized');
+        // Quick view functionality
+        this.setupQuickView();
+        
+        // Smooth scrolling
+        this.setupSmoothScrolling();
+        
+        // Modern cart interactions
+        this.setupCartInteractions();
+    }
+
+    setupCategoryFilters() {
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('category-filter')) {
+                e.preventDefault();
+                
+                // Update active state
+                document.querySelectorAll('.category-filter').forEach(btn => {
+                    btn.classList.remove('active');
+                });
+                e.target.classList.add('active');
+                
+                // Filter designs
+                const category = e.target.dataset.category;
+                this.filterDesigns(category);
+            }
+        });
+    }
+
+    async filterDesigns(category) {
+        this.currentFilter = category;
+        this.showDesignGridLoader();
+        
+        try {
+            let url = '/api/designs/featured?limit=8';
+            if (category !== 'all') {
+                url = `/api/designs?category=${category}&limit=8`;
+            }
+            
+            const response = await axios.get(url);
+            if (response.data.success) {
+                this.designs = response.data.data;
+                this.renderFeaturedDesigns();
+            }
+        } catch (error) {
+            console.error('Filter error:', error);
+            this.showNotification('Failed to filter designs', 'error');
+        }
+    }
+
+    showDesignGridLoader() {
+        const grid = document.getElementById('design-grid');
+        if (grid) {
+            grid.innerHTML = Array(4).fill(0).map(() => `
+                <div class="design-card-modern loading">
+                    <div class="aspect-square bg-gray-200 animate-pulse rounded-t-2xl"></div>
+                    <div class="p-6">
+                        <div class="h-4 bg-gray-200 rounded mb-3 animate-pulse"></div>
+                        <div class="h-3 bg-gray-200 rounded w-2/3 mb-4 animate-pulse"></div>
+                        <div class="flex items-center justify-between">
+                            <div class="h-6 bg-gray-200 rounded w-16 animate-pulse"></div>
+                            <div class="h-8 w-8 bg-gray-200 rounded-full animate-pulse"></div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+    }
+
+    setupSearch() {
+        const searchBtn = document.querySelector('.fa-search')?.parentElement;
+        if (searchBtn) {
+            searchBtn.addEventListener('click', () => {
+                this.showSearchModal();
+            });
+        }
+    }
+
+    showSearchModal() {
+        const modalHTML = `
+            <div class="modal-overlay" id="search-modal">
+                <div class="modal-content max-w-2xl">
+                    <div class="modal-header">
+                        <h3 class="text-xl font-semibold">Search Designs</h3>
+                        <button onclick="app.closeModal('search-modal')" class="text-muted hover:text-dark">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="relative mb-6">
+                            <input type="text" id="search-input" placeholder="Search for nail art designs..." 
+                                   class="form-input pl-12 text-lg" autofocus>
+                            <i class="fas fa-search absolute left-4 top-1/2 transform -translate-y-1/2 text-muted"></i>
+                        </div>
+                        
+                        <div class="mb-4">
+                            <h4 class="font-semibold mb-3">Popular Searches</h4>
+                            <div class="flex flex-wrap gap-2">
+                                <button class="search-tag">French Manicure</button>
+                                <button class="search-tag">Glitter Nails</button>
+                                <button class="search-tag">Floral Design</button>
+                                <button class="search-tag">Abstract Art</button>
+                                <button class="search-tag">Wedding Nails</button>
+                            </div>
+                        </div>
+                        
+                        <div id="search-results" class="hidden">
+                            <h4 class="font-semibold mb-3">Search Results</h4>
+                            <div id="search-results-grid" class="grid grid-cols-2 gap-4"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        this.setupSearchInput();
+    }
+
+    setupSearchInput() {
+        const input = document.getElementById('search-input');
+        if (input) {
+            input.addEventListener('input', (e) => {
+                clearTimeout(this.searchTimeout);
+                this.searchTimeout = setTimeout(() => {
+                    this.performSearch(e.target.value);
+                }, 300);
+            });
+        }
+        
+        // Search tag clicks
+        document.querySelectorAll('.search-tag').forEach(tag => {
+            tag.addEventListener('click', () => {
+                input.value = tag.textContent;
+                this.performSearch(tag.textContent);
+            });
+        });
+    }
+
+    async performSearch(query) {
+        if (query.length < 2) {
+            document.getElementById('search-results').classList.add('hidden');
+            return;
+        }
+        
+        try {
+            const response = await axios.post('/api/designs/search', {
+                query: query,
+                limit: 6
+            });
+            
+            if (response.data.success) {
+                this.renderSearchResults(response.data.data);
+                document.getElementById('search-results').classList.remove('hidden');
+            }
+        } catch (error) {
+            console.error('Search error:', error);
+        }
+    }
+
+    renderSearchResults(results) {
+        const grid = document.getElementById('search-results-grid');
+        if (!grid) return;
+        
+        grid.innerHTML = results.map(design => `
+            <div class="search-result-item p-4 bg-gray-50 rounded-2xl hover:bg-gray-100 cursor-pointer transition-colors" 
+                 onclick="app.closeModal('search-modal'); app.showDesignDetails(${design.id})">
+                <img src="${design.image_url || '/static/images/placeholder-nail.jpg'}" 
+                     alt="${design.name}" class="w-full h-20 object-cover rounded-lg mb-2">
+                <div class="text-sm font-medium text-dark">${design.name}</div>
+                <div class="text-xs text-muted">$${design.base_price}</div>
+            </div>
+        `).join('');
+    }
+
+    setupWishlist() {
+        // Wishlist button functionality
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.wishlist-btn')) {
+                e.preventDefault();
+                e.stopPropagation();
+                
+                const btn = e.target.closest('.wishlist-btn');
+                const designId = parseInt(btn.dataset.designId);
+                this.toggleWishlist(designId, btn);
+            }
+        });
+    }
+
+    toggleWishlist(designId, btn) {
+        if (!this.user) {
+            this.showAuthModal();
+            return;
+        }
+        
+        const isWishlisted = this.wishlist.includes(designId);
+        
+        if (isWishlisted) {
+            this.wishlist = this.wishlist.filter(id => id !== designId);
+            btn.innerHTML = '<i class="far fa-heart"></i>';
+            this.showNotification('Removed from wishlist', 'success');
+        } else {
+            this.wishlist.push(designId);
+            btn.innerHTML = '<i class="fas fa-heart text-danger"></i>';
+            this.showNotification('Added to wishlist', 'success');
+        }
+        
+        // Add animation
+        btn.style.transform = 'scale(1.2)';
+        setTimeout(() => {
+            btn.style.transform = 'scale(1)';
+        }, 150);
+    }
+
+    setupQuickView() {
+        // Quick view on hover/click
+        document.addEventListener('mouseenter', (e) => {
+            if (e.target.closest('.design-card-modern')) {
+                const card = e.target.closest('.design-card-modern');
+                this.showQuickViewButton(card);
+            }
+        });
+        
+        document.addEventListener('mouseleave', (e) => {
+            if (e.target.closest('.design-card-modern')) {
+                this.hideQuickViewButton();
+            }
+        });
+    }
+
+    showQuickViewButton(card) {
+        // Remove existing quick view button
+        this.hideQuickViewButton();
+        
+        const button = document.createElement('button');
+        button.className = 'quick-view-btn absolute top-4 right-4 bg-white/90 backdrop-blur-sm text-dark p-2 rounded-lg shadow-soft hover:bg-white transition-all opacity-0';
+        button.innerHTML = '<i class="fas fa-eye text-sm"></i>';
+        
+        card.style.position = 'relative';
+        card.appendChild(button);
+        
+        // Fade in
+        setTimeout(() => {
+            button.style.opacity = '1';
+        }, 50);
+        
+        button.addEventListener('click', (e) => {
+            e.stopPropagation();
+            const designId = this.getDesignIdFromCard(card);
+            if (designId) {
+                this.showDesignDetails(designId);
+            }
+        });
+    }
+
+    hideQuickViewButton() {
+        const existing = document.querySelector('.quick-view-btn');
+        if (existing) {
+            existing.style.opacity = '0';
+            setTimeout(() => existing.remove(), 200);
+        }
+    }
+
+    getDesignIdFromCard(card) {
+        // Extract design ID from card onclick attribute or data attribute
+        const onclick = card.getAttribute('onclick');
+        if (onclick) {
+            const match = onclick.match(/showDesignDetails\((\d+)\)/);
+            return match ? parseInt(match[1]) : null;
+        }
+        return null;
+    }
+
+    setupSmoothScrolling() {
+        // Enhanced smooth scrolling for navigation
+        document.querySelectorAll('a[href^="#"]').forEach(link => {
+            link.addEventListener('click', (e) => {
+                e.preventDefault();
+                const target = document.querySelector(link.getAttribute('href'));
+                if (target) {
+                    const offsetTop = target.offsetTop - 80; // Account for header
+                    window.scrollTo({
+                        top: offsetTop,
+                        behavior: 'smooth'
+                    });
+                    
+                    // Add highlight effect
+                    target.style.transform = 'scale(1.02)';
+                    setTimeout(() => {
+                        target.style.transform = 'scale(1)';
+                    }, 300);
+                }
+            });
+        });
+    }
+
+    setupCartInteractions() {
+        // Enhanced cart button with animation
+        const cartBtn = document.getElementById('cart-btn');
+        if (cartBtn) {
+            cartBtn.addEventListener('click', () => {
+                // Add click animation
+                cartBtn.style.transform = 'scale(0.95)';
+                setTimeout(() => {
+                    cartBtn.style.transform = 'scale(1)';
+                    this.showCart();
+                }, 100);
+            });
+        }
     }
 
     // Authentication methods
@@ -216,41 +596,109 @@ class NailCraftApp {
         const grid = document.getElementById('design-grid');
         if (!grid) return;
 
-        const designsHTML = this.designs.map(design => `
-            <div class="design-card" onclick="app.showDesignDetails(${design.id})">
-                ${design.is_premium ? '<div class="premium-badge">PREMIUM</div>' : ''}
+        const designsHTML = this.designs.map((design, index) => `
+            <div class="design-card-modern group" onclick="app.showDesignDetails(${design.id})" 
+                 data-animate style="animation-delay: ${index * 0.1}s">
                 <div class="relative overflow-hidden">
                     <img src="${design.image_url || '/static/images/placeholder-nail.jpg'}" 
                          alt="${design.name}" 
-                         class="w-full h-48 object-cover">
-                </div>
-                <div class="p-4">
-                    <h4 class="font-semibold text-lg mb-2">${design.name}</h4>
-                    <p class="text-gray-600 text-sm mb-3 line-clamp-2">${design.description || ''}</p>
-                    <div class="flex items-center justify-between">
-                        <div class="flex items-center space-x-2">
-                            ${design.subscription_price ? 
-                                `<span class="text-sm text-gray-500 line-through">$${design.base_price}</span>
-                                 <span class="price-tag">$${design.subscription_price}</span>` :
-                                `<span class="price-tag">$${design.base_price}</span>`
+                         class="aspect-square object-cover w-full">
+                    
+                    ${design.is_premium ? `
+                        <div class="absolute top-4 left-4 bg-gradient-to-r from-accent to-yellow-600 text-white px-3 py-1 rounded-full text-xs font-semibold shadow-soft">
+                            <i class="fas fa-crown mr-1"></i>
+                            Premium
+                        </div>
+                    ` : ''}
+                    
+                    <button class="wishlist-btn absolute top-4 right-4 w-10 h-10 bg-white/90 backdrop-blur-sm rounded-full flex items-center justify-center text-muted hover:text-danger transition-all transform hover:scale-110 opacity-0 group-hover:opacity-100" 
+                            data-design-id="${design.id}">
+                        <i class="far fa-heart"></i>
+                    </button>
+                    
+                    <div class="design-overlay"></div>
+                    <div class="design-info">
+                        <div class="text-sm font-medium mb-1">${design.name}</div>
+                        <div class="text-xs opacity-80">${design.category_name || 'Premium Design'}</div>
+                    </div>
+                    
+                    <!-- Quick Actions -->
+                    <div class="absolute bottom-4 left-4 right-4 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-all duration-300 transform translate-y-4 group-hover:translate-y-0">
+                        <button onclick="event.stopPropagation(); app.addToCart(${design.id})" 
+                                class="bg-white text-dark px-4 py-2 rounded-xl text-sm font-semibold hover:bg-gray-100 transition-colors flex items-center shadow-soft">
+                            <i class="fas fa-cart-plus mr-2"></i>
+                            Add
+                        </button>
+                        <div class="text-white font-bold text-lg">
+                            ${design.subscription_price && this.user?.subscription_status !== 'none' ? 
+                                `$${design.subscription_price}` : `$${design.base_price}`
                             }
                         </div>
-                        <button onclick="event.stopPropagation(); app.addToCart(${design.id})" 
-                                class="text-nail-pink hover:text-premium-purple transition-colors">
-                            <i class="fas fa-cart-plus"></i>
-                        </button>
                     </div>
-                    <div class="mt-2 flex items-center space-x-1">
-                        ${design.colors ? design.colors.slice(0, 3).map(color => 
-                            `<div class="w-4 h-4 rounded-full border" style="background-color: ${color}"></div>`
-                        ).join('') : ''}
-                        <span class="text-xs text-gray-500 ml-2">${design.category_name || ''}</span>
+                </div>
+                
+                <div class="p-6">
+                    <h3 class="font-bold text-lg text-dark mb-2 line-clamp-1">${design.name}</h3>
+                    <p class="text-muted text-sm mb-4 line-clamp-2">${design.description || 'Beautiful nail art design crafted by expert artists'}</p>
+                    
+                    <div class="flex items-center justify-between mb-3">
+                        <div class="flex items-center space-x-2">
+                            ${design.subscription_price && this.user?.subscription_status !== 'none' ? 
+                                `<span class="text-sm text-muted line-through">$${design.base_price}</span>
+                                 <span class="text-xl font-bold text-primary">$${design.subscription_price}</span>` :
+                                `<span class="text-xl font-bold text-dark">$${design.base_price}</span>`
+                            }
+                        </div>
+                        <div class="flex items-center text-xs text-muted">
+                            <i class="fas fa-star text-accent mr-1"></i>
+                            4.8 (124)
+                        </div>
+                    </div>
+                    
+                    <!-- Color Palette -->
+                    ${design.colors && design.colors.length ? `
+                        <div class="flex items-center space-x-2 mb-3">
+                            <span class="text-xs text-muted">Colors:</span>
+                            ${design.colors.slice(0, 4).map(color => 
+                                `<div class="w-4 h-4 rounded-full border-2 border-white shadow-soft" 
+                                      style="background-color: ${color}" title="${color}"></div>`
+                            ).join('')}
+                            ${design.colors.length > 4 ? `<span class="text-xs text-muted">+${design.colors.length - 4}</span>` : ''}
+                        </div>
+                    ` : ''}
+                    
+                    <!-- Tags -->
+                    <div class="flex items-center justify-between">
+                        <div class="flex items-center space-x-2">
+                            ${design.difficulty_level ? `
+                                <span class="badge badge-${
+                                    design.difficulty_level === 'easy' ? 'success' : 
+                                    design.difficulty_level === 'medium' ? 'warning' : 'danger'
+                                }">
+                                    ${design.difficulty_level}
+                                </span>
+                            ` : ''}
+                            ${design.estimated_time_minutes ? `
+                                <span class="text-xs text-muted">${design.estimated_time_minutes}min</span>
+                            ` : ''}
+                        </div>
+                        <button onclick="event.stopPropagation(); app.addToCart(${design.id})" 
+                                class="w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center hover:bg-primary-dark transition-all transform hover:scale-110 shadow-soft">
+                            <i class="fas fa-plus text-sm"></i>
+                        </button>
                     </div>
                 </div>
             </div>
         `).join('');
 
         grid.innerHTML = designsHTML;
+        
+        // Initialize animations
+        setTimeout(() => {
+            document.querySelectorAll('[data-animate]').forEach(el => {
+                el.classList.add('animate-fade-in');
+            });
+        }, 100);
     }
 
     async showDesignDetails(designId) {
@@ -429,6 +877,14 @@ class NailCraftApp {
             return;
         }
 
+        // Show loading state
+        const button = event?.target?.closest('button');
+        const originalContent = button?.innerHTML;
+        if (button) {
+            button.innerHTML = '<i class="fas fa-spinner animate-spin"></i>';
+            button.disabled = true;
+        }
+
         try {
             const response = await axios.post('/api/cart/add', {
                 design_id: designId,
@@ -437,12 +893,72 @@ class NailCraftApp {
             });
             
             if (response.data.success) {
-                this.showNotification('Added to cart!', 'success');
+                // Success animation
+                if (button) {
+                    button.innerHTML = '<i class="fas fa-check"></i>';
+                    button.classList.add('bg-success', 'text-white');
+                    
+                    // Cart flying animation
+                    this.animateToCart(button);
+                    
+                    setTimeout(() => {
+                        if (button && originalContent) {
+                            button.innerHTML = originalContent;
+                            button.classList.remove('bg-success', 'text-white');
+                            button.disabled = false;
+                        }
+                    }, 2000);
+                }
+                
+                this.showNotification('Added to cart successfully!', 'success');
                 await this.updateCartCount();
             }
         } catch (error) {
+            if (button && originalContent) {
+                button.innerHTML = originalContent;
+                button.disabled = false;
+            }
             this.showNotification(error.response?.data?.error || 'Failed to add to cart', 'error');
         }
+    }
+
+    animateToCart(fromElement) {
+        const cart = document.getElementById('cart-btn');
+        if (!cart || !fromElement) return;
+        
+        const fromRect = fromElement.getBoundingClientRect();
+        const cartRect = cart.getBoundingClientRect();
+        
+        const flyingItem = document.createElement('div');
+        flyingItem.className = 'fixed w-6 h-6 bg-primary rounded-full z-[110] pointer-events-none';
+        flyingItem.style.left = fromRect.left + fromRect.width/2 - 12 + 'px';
+        flyingItem.style.top = fromRect.top + fromRect.height/2 - 12 + 'px';
+        flyingItem.innerHTML = '<i class="fas fa-gem text-white text-xs flex items-center justify-center h-full"></i>';
+        
+        document.body.appendChild(flyingItem);
+        
+        // Animate to cart
+        flyingItem.animate([
+            { 
+                transform: 'translate(0, 0) scale(1)', 
+                opacity: 1 
+            },
+            { 
+                transform: `translate(${cartRect.left - fromRect.left}px, ${cartRect.top - fromRect.top}px) scale(0.3)`, 
+                opacity: 0 
+            }
+        ], {
+            duration: 600,
+            easing: 'cubic-bezier(0.25, 0.46, 0.45, 0.94)'
+        }).onfinish = () => {
+            flyingItem.remove();
+            
+            // Cart bounce animation
+            cart.style.animation = 'bounceSubtle 0.6s ease-out';
+            setTimeout(() => {
+                cart.style.animation = '';
+            }, 600);
+        };
     }
 
     async addToCartFromModal(designId) {
@@ -647,28 +1163,52 @@ class NailCraftApp {
     }
 
     showNotification(message, type = 'info') {
+        // Remove existing notifications of the same type
+        document.querySelectorAll(`.notification.${type}`).forEach(n => n.remove());
+        
         const notification = document.createElement('div');
         notification.className = `notification ${type}`;
         notification.innerHTML = `
             <div class="flex items-center justify-between">
                 <div class="flex items-center">
-                    <i class="fas ${type === 'success' ? 'fa-check-circle' : 
-                                   type === 'error' ? 'fa-exclamation-circle' : 
-                                   'fa-info-circle'} mr-2"></i>
-                    <span>${message}</span>
+                    <div class="w-10 h-10 rounded-full flex items-center justify-center mr-3 ${
+                        type === 'success' ? 'bg-success/10' : 
+                        type === 'error' ? 'bg-danger/10' : 
+                        type === 'warning' ? 'bg-warning/10' : 'bg-primary/10'
+                    }">
+                        <i class="fas ${
+                            type === 'success' ? 'fa-check text-success' : 
+                            type === 'error' ? 'fa-exclamation-triangle text-danger' : 
+                            type === 'warning' ? 'fa-exclamation text-warning' : 
+                            'fa-info-circle text-primary'
+                        }"></i>
+                    </div>
+                    <div>
+                        <div class="font-semibold text-dark mb-1">
+                            ${type === 'success' ? 'Success!' : 
+                              type === 'error' ? 'Error' : 
+                              type === 'warning' ? 'Warning' : 'Info'}
+                        </div>
+                        <div class="text-sm text-muted">${message}</div>
+                    </div>
                 </div>
-                <button onclick="this.parentElement.parentElement.remove()" class="text-gray-400 hover:text-gray-600">
-                    <i class="fas fa-times"></i>
+                <button onclick="this.parentElement.parentElement.style.opacity='0'; setTimeout(() => this.parentElement.parentElement.remove(), 300)" 
+                        class="text-muted hover:text-dark transition-colors p-1">
+                    <i class="fas fa-times text-sm"></i>
                 </button>
             </div>
         `;
 
         document.body.appendChild(notification);
+        
+        // Trigger entrance animation
+        setTimeout(() => notification.style.opacity = '1', 50);
 
         // Auto remove after 5 seconds
         setTimeout(() => {
             if (notification.parentElement) {
-                notification.remove();
+                notification.style.opacity = '0';
+                setTimeout(() => notification.remove(), 300);
             }
         }, 5000);
     }
@@ -728,8 +1268,70 @@ class NailCraftApp {
     }
 }
 
+// Add search tag styles
+const searchTagStyles = `
+    .search-tag {
+        @apply bg-gray-100 hover:bg-primary hover:text-white text-muted px-4 py-2 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer;
+    }
+    
+    .search-result-item:hover {
+        transform: translateY(-2px);
+    }
+`;
+
+// Add styles to page
+const styleSheet = document.createElement('style');
+styleSheet.textContent = searchTagStyles;
+document.head.appendChild(styleSheet);
+
 // Initialize the app when page loads
 let app;
 document.addEventListener('DOMContentLoaded', () => {
     app = new NailCraftApp();
+    
+    // Add keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        if (e.ctrlKey || e.metaKey) {
+            switch(e.key) {
+                case 'k':
+                    e.preventDefault();
+                    app.showSearchModal();
+                    break;
+                case '/':
+                    e.preventDefault();
+                    app.showSearchModal();
+                    break;
+            }
+        }
+        
+        if (e.key === 'Escape') {
+            const modals = document.querySelectorAll('.modal-overlay');
+            modals.forEach(modal => modal.remove());
+        }
+    });
+    
+    // Add scroll-based navbar styling
+    let lastScrollTop = 0;
+    const navbar = document.querySelector('header');
+    
+    window.addEventListener('scroll', () => {
+        const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+        
+        if (scrollTop > lastScrollTop && scrollTop > 100) {
+            // Scrolling down
+            navbar.style.transform = 'translateY(-100%)';
+        } else {
+            // Scrolling up
+            navbar.style.transform = 'translateY(0)';
+        }
+        
+        // Add background on scroll
+        if (scrollTop > 50) {
+            navbar.classList.add('shadow-medium');
+        } else {
+            navbar.classList.remove('shadow-medium');
+        }
+        
+        lastScrollTop = scrollTop;
+    });
 });
