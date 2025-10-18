@@ -20,7 +20,7 @@
 
 ## URLs
 - **Development**: https://3000-ik0dy4qsefzzr4zejc4v3-cbeee0f9.sandbox.novita.ai
-- **GitHub**: (Repository to be connected)
+- **GitHub**: https://github.com/angelxearth-byte/Nail-studio
 
 ## Currently Completed Features
 
