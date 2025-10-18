@@ -11,6 +11,19 @@ class NailCraftApp {
         this.currentFilter = 'all';
         this.searchTimeout = null;
         this.wishlist = [];
+        this.customDesign = {
+            nails: Array(10).fill(null).map(() => ({
+                color: '#FF69B4',
+                pattern: 'solid',
+                texture: 'glossy',
+                shape: 'oval'
+            })),
+            handSize: 'medium',
+            selectedNail: null
+        };
+        this.templates = null;
+        this.currentSort = 'popular';
+        this.currentView = 'grid';
         
         this.init();
     }
@@ -30,6 +43,8 @@ class NailCraftApp {
             // Setup event listeners
             this.setupEventListeners();
             this.setupModernInteractions();
+            this.setupDesignStudio();
+            this.setupAdvancedFilters();
             
             // Update cart count
             await this.updateCartCount();
@@ -1265,6 +1280,801 @@ class NailCraftApp {
         } catch (error) {
             console.error('Logout error:', error);
         }
+    }
+
+    // === NAIL CUSTOMIZATION SYSTEM ===
+    
+    setupDesignStudio() {
+        // Setup dropdown menu functionality
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('[data-dropdown="design-studio"]')) {
+                e.preventDefault();
+                this.toggleDropdown('design-studio');
+            }
+            
+            // Customizer option
+            if (e.target.closest('a[href="#customizer"]')) {
+                e.preventDefault();
+                this.showCustomizer();
+            }
+            
+            // Upload option
+            if (e.target.closest('a[href="#uploader"]')) {
+                e.preventDefault();
+                this.showUploader();
+            }
+            
+            // My designs option
+            if (e.target.closest('a[href="#my-designs"]')) {
+                e.preventDefault();
+                this.showMyDesigns();
+            }
+        });
+    }
+    
+    toggleDropdown(dropdownId) {
+        const dropdown = document.querySelector(`.dropdown-menu[data-dropdown="${dropdownId}"]`);
+        if (dropdown) {
+            const isVisible = !dropdown.classList.contains('hidden');
+            
+            // Hide all dropdowns first
+            document.querySelectorAll('.dropdown-menu').forEach(menu => {
+                menu.classList.add('hidden');
+            });
+            
+            // Toggle current dropdown
+            if (!isVisible) {
+                dropdown.classList.remove('hidden');
+            }
+        }
+    }
+    
+    async showCustomizer() {
+        await this.loadCustomizerTemplates();
+        
+        const modalHTML = `
+            <div class="modal-overlay" id="customizer-modal">
+                <div class="modal-content max-w-6xl">
+                    <div class="modal-header">
+                        <h3 class="text-2xl font-bold">Nail Art Customizer</h3>
+                        <button onclick="app.closeModal('customizer-modal')" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="nail-customizer">
+                            <!-- Hand Template -->
+                            <div class="customizer-section">
+                                <div class="hand-template-container">
+                                    <h4 class="text-lg font-semibold mb-4">Select Nails to Customize</h4>
+                                    <div class="hand-template">
+                                        ${this.generateHandSVG()}
+                                    </div>
+                                    <div class="hand-size-controls mt-4">
+                                        <label class="form-label">Hand Size:</label>
+                                        <select id="hand-size" class="form-input" onchange="app.updateHandSize(this.value)">
+                                            <option value="small">Small</option>
+                                            <option value="medium" selected>Medium</option>
+                                            <option value="large">Large</option>
+                                        </select>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <!-- Customization Panel -->
+                            <div class="customizer-panel">
+                                <div class="customization-tabs">
+                                    <button class="tab-button active" data-tab="colors" onclick="app.switchCustomizerTab('colors', this)">
+                                        <i class="fas fa-palette"></i> Colors
+                                    </button>
+                                    <button class="tab-button" data-tab="patterns" onclick="app.switchCustomizerTab('patterns', this)">
+                                        <i class="fas fa-shapes"></i> Patterns
+                                    </button>
+                                    <button class="tab-button" data-tab="textures" onclick="app.switchCustomizerTab('textures', this)">
+                                        <i class="fas fa-gem"></i> Textures
+                                    </button>
+                                    <button class="tab-button" data-tab="shapes" onclick="app.switchCustomizerTab('shapes', this)">
+                                        <i class="fas fa-circle"></i> Shapes
+                                    </button>
+                                </div>
+                                
+                                <!-- Colors Tab -->
+                                <div class="tab-content active" data-tab="colors">
+                                    <h4 class="font-semibold mb-3">Choose Color</h4>
+                                    <div class="color-palette">
+                                        ${this.generateColorPalette()}
+                                    </div>
+                                    <div class="mt-4">
+                                        <label class="form-label">Custom Color:</label>
+                                        <input type="color" id="custom-color" onchange="app.selectCustomColor(this.value)" class="w-full h-12 rounded-lg border-2 border-gray-200">
+                                    </div>
+                                </div>
+                                
+                                <!-- Patterns Tab -->
+                                <div class="tab-content" data-tab="patterns">
+                                    <h4 class="font-semibold mb-3">Choose Pattern</h4>
+                                    <div class="pattern-grid">
+                                        ${this.generatePatternOptions()}
+                                    </div>
+                                </div>
+                                
+                                <!-- Textures Tab -->
+                                <div class="tab-content" data-tab="textures">
+                                    <h4 class="font-semibold mb-3">Choose Texture</h4>
+                                    <div class="texture-grid">
+                                        ${this.generateTextureOptions()}
+                                    </div>
+                                </div>
+                                
+                                <!-- Shapes Tab -->
+                                <div class="tab-content" data-tab="shapes">
+                                    <h4 class="font-semibold mb-3">Choose Nail Shape</h4>
+                                    <div class="shape-grid">
+                                        ${this.generateShapeOptions()}
+                                    </div>
+                                </div>
+                                
+                                <!-- Action Buttons -->
+                                <div class="customizer-actions mt-6 pt-4 border-t">
+                                    <button onclick="app.applyToAllNails()" class="btn-secondary mr-3">
+                                        Apply to All Nails
+                                    </button>
+                                    <button onclick="app.resetCustomDesign()" class="btn-outline mr-3">
+                                        Reset Design
+                                    </button>
+                                    <button onclick="app.saveCustomDesign()" class="btn-primary">
+                                        Save Design
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        this.updateHandPreview();
+    }
+    
+    async loadCustomizerTemplates() {
+        if (!this.templates) {
+            try {
+                const response = await axios.get('/api/customizer/templates');
+                if (response.data.success) {
+                    this.templates = response.data.data;
+                }
+            } catch (error) {
+                console.error('Failed to load templates:', error);
+                // Use default templates
+                this.templates = {
+                    colors: ['#FF69B4', '#FF1493', '#DC143C', '#8B0000', '#FF4500', '#FFA500', '#FFD700', '#ADFF2F', '#00FF7F', '#20B2AA', '#87CEEB', '#4169E1', '#8A2BE2', '#FF69B4'],
+                    patterns: ['solid', 'stripes', 'dots', 'floral', 'geometric', 'glitter', 'ombre', 'marble'],
+                    textures: ['glossy', 'matte', 'metallic', 'pearl', 'holographic', 'textured'],
+                    shapes: ['oval', 'round', 'square', 'squoval', 'almond', 'stiletto', 'coffin', 'lipstick']
+                };
+            }
+        }
+    }
+    
+    generateHandSVG() {
+        return `
+            <svg viewBox="0 0 400 600" class="hand-svg" width="300" height="450">
+                <!-- Hand outline -->
+                <path d="M200 50 Q180 45 160 60 Q140 75 130 100 L125 200 Q120 250 125 300 L130 400 Q135 450 150 480 L180 520 Q200 540 220 520 L250 480 Q265 450 270 400 L275 300 Q280 250 275 200 L270 100 Q260 75 240 60 Q220 45 200 50 Z" 
+                      fill="#F4C2A1" stroke="#E0B598" stroke-width="2"/>
+                
+                <!-- Nails -->
+                ${Array(10).fill(0).map((_, i) => {
+                    const positions = [
+                        {x: 140, y: 80}, {x: 165, y: 70}, {x: 190, y: 65}, {x: 215, y: 70}, {x: 240, y: 80}, // Left hand
+                        {x: 140, y: 380}, {x: 165, y: 370}, {x: 190, y: 365}, {x: 215, y: 370}, {x: 240, y: 380} // Right hand
+                    ];
+                    
+                    return `
+                        <ellipse id="nail-${i}" 
+                                cx="${positions[i].x}" 
+                                cy="${positions[i].y}" 
+                                rx="12" ry="18"
+                                fill="${this.customDesign.nails[i].color}"
+                                stroke="#000" stroke-width="1"
+                                class="nail-element ${this.customDesign.selectedNail === i ? 'selected' : ''}"
+                                onclick="app.selectNail(${i})"
+                                style="cursor: pointer; transition: all 0.2s;">
+                        </ellipse>
+                        <text x="${positions[i].x}" y="${positions[i].y + 25}" 
+                              text-anchor="middle" 
+                              font-size="10" 
+                              fill="#666">${i + 1}</text>
+                    `;
+                }).join('')}
+            </svg>
+        `;
+    }
+    
+    generateColorPalette() {
+        const colors = this.templates?.colors || ['#FF69B4', '#FF1493', '#DC143C', '#8B0000', '#FF4500', '#FFA500', '#FFD700', '#ADFF2F', '#00FF7F', '#20B2AA', '#87CEEB', '#4169E1', '#8A2BE2', '#FF69B4'];
+        
+        return colors.map(color => `
+            <div class="color-option" 
+                 style="background-color: ${color}" 
+                 onclick="app.selectColor('${color}')" 
+                 title="${color}">
+            </div>
+        `).join('');
+    }
+    
+    generatePatternOptions() {
+        const patterns = this.templates?.patterns || ['solid', 'stripes', 'dots', 'floral', 'geometric', 'glitter', 'ombre', 'marble'];
+        
+        return patterns.map(pattern => `
+            <div class="pattern-option ${this.customDesign.nails[this.customDesign.selectedNail || 0]?.pattern === pattern ? 'selected' : ''}" 
+                 onclick="app.selectPattern('${pattern}')">
+                <div class="pattern-preview ${pattern}"></div>
+                <span class="pattern-name">${pattern}</span>
+            </div>
+        `).join('');
+    }
+    
+    generateTextureOptions() {
+        const textures = this.templates?.textures || ['glossy', 'matte', 'metallic', 'pearl', 'holographic', 'textured'];
+        
+        return textures.map(texture => `
+            <div class="texture-option ${this.customDesign.nails[this.customDesign.selectedNail || 0]?.texture === texture ? 'selected' : ''}" 
+                 onclick="app.selectTexture('${texture}')">
+                <div class="texture-preview ${texture}"></div>
+                <span class="texture-name">${texture}</span>
+            </div>
+        `).join('');
+    }
+    
+    generateShapeOptions() {
+        const shapes = this.templates?.shapes || ['oval', 'round', 'square', 'squoval', 'almond', 'stiletto', 'coffin', 'lipstick'];
+        
+        return shapes.map(shape => `
+            <div class="shape-option ${this.customDesign.nails[this.customDesign.selectedNail || 0]?.shape === shape ? 'selected' : ''}" 
+                 onclick="app.selectShape('${shape}')">
+                <div class="shape-preview ${shape}"></div>
+                <span class="shape-name">${shape}</span>
+            </div>
+        `).join('');
+    }
+    
+    selectNail(index) {
+        this.customDesign.selectedNail = index;
+        
+        // Update nail selection visual
+        document.querySelectorAll('.nail-element').forEach(nail => nail.classList.remove('selected'));
+        document.getElementById(`nail-${index}`).classList.add('selected');
+        
+        // Update option selections in panels
+        this.updateCustomizationPanels();
+        
+        this.showNotification(`Nail ${index + 1} selected`, 'info');
+    }
+    
+    selectColor(color) {
+        if (this.customDesign.selectedNail !== null) {
+            this.customDesign.nails[this.customDesign.selectedNail].color = color;
+            this.updateHandPreview();
+        } else {
+            this.showNotification('Please select a nail first', 'warning');
+        }
+    }
+    
+    selectCustomColor(color) {
+        this.selectColor(color);
+    }
+    
+    selectPattern(pattern) {
+        if (this.customDesign.selectedNail !== null) {
+            this.customDesign.nails[this.customDesign.selectedNail].pattern = pattern;
+            this.updateHandPreview();
+            this.updateCustomizationPanels();
+        } else {
+            this.showNotification('Please select a nail first', 'warning');
+        }
+    }
+    
+    selectTexture(texture) {
+        if (this.customDesign.selectedNail !== null) {
+            this.customDesign.nails[this.customDesign.selectedNail].texture = texture;
+            this.updateHandPreview();
+            this.updateCustomizationPanels();
+        } else {
+            this.showNotification('Please select a nail first', 'warning');
+        }
+    }
+    
+    selectShape(shape) {
+        if (this.customDesign.selectedNail !== null) {
+            this.customDesign.nails[this.customDesign.selectedNail].shape = shape;
+            this.updateHandPreview();
+            this.updateCustomizationPanels();
+        } else {
+            this.showNotification('Please select a nail first', 'warning');
+        }
+    }
+    
+    updateHandPreview() {
+        this.customDesign.nails.forEach((nail, index) => {
+            const nailElement = document.getElementById(`nail-${index}`);
+            if (nailElement) {
+                nailElement.setAttribute('fill', nail.color);
+                nailElement.setAttribute('class', `nail-element ${nail.pattern} ${nail.texture} ${nail.shape} ${this.customDesign.selectedNail === index ? 'selected' : ''}`);
+            }
+        });
+    }
+    
+    updateCustomizationPanels() {
+        if (this.customDesign.selectedNail === null) return;
+        
+        const selectedNail = this.customDesign.nails[this.customDesign.selectedNail];
+        
+        // Update pattern selections
+        document.querySelectorAll('.pattern-option').forEach(option => {
+            option.classList.remove('selected');
+            if (option.onclick.toString().includes(selectedNail.pattern)) {
+                option.classList.add('selected');
+            }
+        });
+        
+        // Update texture selections
+        document.querySelectorAll('.texture-option').forEach(option => {
+            option.classList.remove('selected');
+            if (option.onclick.toString().includes(selectedNail.texture)) {
+                option.classList.add('selected');
+            }
+        });
+        
+        // Update shape selections
+        document.querySelectorAll('.shape-option').forEach(option => {
+            option.classList.remove('selected');
+            if (option.onclick.toString().includes(selectedNail.shape)) {
+                option.classList.add('selected');
+            }
+        });
+    }
+    
+    switchCustomizerTab(tabName, button) {
+        // Update tab buttons
+        document.querySelectorAll('.tab-button').forEach(btn => btn.classList.remove('active'));
+        button.classList.add('active');
+        
+        // Update tab content
+        document.querySelectorAll('.tab-content').forEach(content => content.classList.remove('active'));
+        document.querySelector(`[data-tab="${tabName}"]`).classList.add('active');
+    }
+    
+    updateHandSize(size) {
+        this.customDesign.handSize = size;
+        
+        const handSvg = document.querySelector('.hand-svg');
+        if (handSvg) {
+            const scale = size === 'small' ? 0.8 : size === 'large' ? 1.2 : 1;
+            handSvg.style.transform = `scale(${scale})`;
+        }
+    }
+    
+    applyToAllNails() {
+        if (this.customDesign.selectedNail === null) {
+            this.showNotification('Please select a nail to copy from', 'warning');
+            return;
+        }
+        
+        const selectedNailDesign = this.customDesign.nails[this.customDesign.selectedNail];
+        this.customDesign.nails = this.customDesign.nails.map(() => ({ ...selectedNailDesign }));
+        
+        this.updateHandPreview();
+        this.showNotification('Design applied to all nails', 'success');
+    }
+    
+    resetCustomDesign() {
+        this.customDesign.nails = Array(10).fill(null).map(() => ({
+            color: '#FF69B4',
+            pattern: 'solid',
+            texture: 'glossy',
+            shape: 'oval'
+        }));
+        this.customDesign.selectedNail = null;
+        
+        this.updateHandPreview();
+        this.updateCustomizationPanels();
+        
+        // Clear nail selection
+        document.querySelectorAll('.nail-element').forEach(nail => nail.classList.remove('selected'));
+        
+        this.showNotification('Design reset', 'info');
+    }
+    
+    async saveCustomDesign() {
+        if (!this.user) {
+            this.showAuthModal();
+            return;
+        }
+        
+        const designName = prompt('Enter a name for your custom design:');
+        if (!designName) return;
+        
+        try {
+            const response = await axios.post('/api/customizer/save', {
+                name: designName,
+                design_data: {
+                    nails: this.customDesign.nails,
+                    handSize: this.customDesign.handSize
+                }
+            });
+            
+            if (response.data.success) {
+                this.showNotification('Custom design saved successfully!', 'success');
+                this.closeModal('customizer-modal');
+            }
+        } catch (error) {
+            this.showNotification('Failed to save design', 'error');
+        }
+    }
+    
+    // === DESIGN UPLOAD SYSTEM ===
+    
+    showUploader() {
+        const modalHTML = `
+            <div class="modal-overlay" id="uploader-modal">
+                <div class="modal-content max-w-4xl">
+                    <div class="modal-header">
+                        <h3 class="text-2xl font-bold">Upload Custom Design</h3>
+                        <button onclick="app.closeModal('uploader-modal')" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        <div class="upload-container">
+                            <div class="upload-area" id="upload-area" ondrop="app.handleDrop(event)" ondragover="app.handleDragOver(event)" ondragenter="app.handleDragEnter(event)" ondragleave="app.handleDragLeave(event)">
+                                <div class="upload-content">
+                                    <i class="fas fa-cloud-upload-alt text-6xl text-gray-400 mb-4"></i>
+                                    <h4 class="text-xl font-semibold mb-2">Drop your design here</h4>
+                                    <p class="text-gray-500 mb-4">or click to browse files</p>
+                                    <input type="file" id="design-upload" accept="image/*" onchange="app.handleFileSelect(event)" class="hidden">
+                                    <button onclick="document.getElementById('design-upload').click()" class="btn-primary">
+                                        Choose File
+                                    </button>
+                                    <div class="mt-4 text-sm text-gray-500">
+                                        Supported formats: JPG, PNG, GIF (max 10MB)
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div id="upload-preview" class="hidden mt-6">
+                                <h4 class="font-semibold mb-4">Preview & Details</h4>
+                                <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                                    <div>
+                                        <img id="preview-image" class="w-full h-64 object-cover rounded-lg border">
+                                    </div>
+                                    <div>
+                                        <form id="upload-form" onsubmit="app.submitUpload(event)">
+                                            <div class="mb-4">
+                                                <label class="form-label">Design Name</label>
+                                                <input type="text" name="name" class="form-input" required>
+                                            </div>
+                                            <div class="mb-4">
+                                                <label class="form-label">Description</label>
+                                                <textarea name="description" class="form-input" rows="3"></textarea>
+                                            </div>
+                                            <div class="mb-4">
+                                                <label class="form-label">Category</label>
+                                                <select name="category" class="form-input" required>
+                                                    <option value="">Select category...</option>
+                                                    <option value="artistic">Artistic</option>
+                                                    <option value="seasonal">Seasonal</option>
+                                                    <option value="wedding">Wedding</option>
+                                                    <option value="abstract">Abstract</option>
+                                                    <option value="floral">Floral</option>
+                                                    <option value="geometric">Geometric</option>
+                                                </select>
+                                            </div>
+                                            <div class="mb-4">
+                                                <label class="form-label">Difficulty Level</label>
+                                                <select name="difficulty" class="form-input" required>
+                                                    <option value="easy">Easy</option>
+                                                    <option value="medium">Medium</option>
+                                                    <option value="hard">Hard</option>
+                                                </select>
+                                            </div>
+                                            <button type="submit" class="w-full btn-primary">
+                                                Upload Design
+                                            </button>
+                                        </form>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+    
+    handleDragOver(e) {
+        e.preventDefault();
+    }
+    
+    handleDragEnter(e) {
+        e.preventDefault();
+        const uploadArea = document.getElementById('upload-area');
+        uploadArea.classList.add('drag-over');
+    }
+    
+    handleDragLeave(e) {
+        e.preventDefault();
+        const uploadArea = document.getElementById('upload-area');
+        uploadArea.classList.remove('drag-over');
+    }
+    
+    handleDrop(e) {
+        e.preventDefault();
+        const uploadArea = document.getElementById('upload-area');
+        uploadArea.classList.remove('drag-over');
+        
+        const files = e.dataTransfer.files;
+        if (files.length > 0) {
+            this.processUploadFile(files[0]);
+        }
+    }
+    
+    handleFileSelect(e) {
+        const files = e.target.files;
+        if (files.length > 0) {
+            this.processUploadFile(files[0]);
+        }
+    }
+    
+    processUploadFile(file) {
+        // Validate file
+        if (!file.type.startsWith('image/')) {
+            this.showNotification('Please select an image file', 'error');
+            return;
+        }
+        
+        if (file.size > 10 * 1024 * 1024) {
+            this.showNotification('File size must be less than 10MB', 'error');
+            return;
+        }
+        
+        // Show preview
+        const reader = new FileReader();
+        reader.onload = (e) => {
+            document.getElementById('preview-image').src = e.target.result;
+            document.getElementById('upload-preview').classList.remove('hidden');
+        };
+        reader.readAsDataURL(file);
+        
+        // Store file for upload
+        this.uploadFile = file;
+    }
+    
+    async submitUpload(e) {
+        e.preventDefault();
+        
+        if (!this.user) {
+            this.showAuthModal();
+            return;
+        }
+        
+        if (!this.uploadFile) {
+            this.showNotification('Please select a file first', 'error');
+            return;
+        }
+        
+        const formData = new FormData(e.target);
+        formData.append('design_file', this.uploadFile);
+        
+        try {
+            // Show loading state
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            const originalText = submitBtn.textContent;
+            submitBtn.innerHTML = '<i class="fas fa-spinner animate-spin mr-2"></i> Uploading...';
+            submitBtn.disabled = true;
+            
+            const response = await axios.post('/api/customizer/upload', formData, {
+                headers: { 'Content-Type': 'multipart/form-data' }
+            });
+            
+            if (response.data.success) {
+                this.showNotification('Design uploaded successfully!', 'success');
+                this.closeModal('uploader-modal');
+            }
+        } catch (error) {
+            this.showNotification('Failed to upload design', 'error');
+        }
+    }
+    
+    // === MY DESIGNS SYSTEM ===
+    
+    async showMyDesigns() {
+        if (!this.user) {
+            this.showAuthModal();
+            return;
+        }
+        
+        try {
+            const response = await axios.get('/api/customizer/my-designs');
+            if (response.data.success) {
+                this.renderMyDesignsModal(response.data.data);
+            }
+        } catch (error) {
+            this.showNotification('Failed to load your designs', 'error');
+        }
+    }
+    
+    renderMyDesignsModal(designs) {
+        const modalHTML = `
+            <div class="modal-overlay" id="my-designs-modal">
+                <div class="modal-content max-w-6xl">
+                    <div class="modal-header">
+                        <h3 class="text-2xl font-bold">My Designs (${designs.length})</h3>
+                        <button onclick="app.closeModal('my-designs-modal')" class="text-gray-400 hover:text-gray-600">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="modal-body">
+                        ${designs.length === 0 ? `
+                            <div class="text-center py-8">
+                                <i class="fas fa-paint-brush text-4xl text-gray-300 mb-4"></i>
+                                <p class="text-gray-500 mb-4">You haven't created any custom designs yet</p>
+                                <button onclick="app.closeModal('my-designs-modal'); app.showCustomizer()" class="btn-primary">
+                                    Create Your First Design
+                                </button>
+                            </div>
+                        ` : `
+                            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                                ${designs.map(design => `
+                                    <div class="design-card">
+                                        <div class="aspect-square bg-gray-100 rounded-lg mb-3 flex items-center justify-center">
+                                            ${design.image_url ? 
+                                                `<img src="${design.image_url}" alt="${design.name}" class="w-full h-full object-cover rounded-lg">` :
+                                                `<div class="hand-preview">${this.generateMiniHandPreview(design.design_data)}</div>`
+                                            }
+                                        </div>
+                                        <h4 class="font-semibold mb-1">${design.name}</h4>
+                                        <p class="text-sm text-gray-500 mb-3">Created ${new Date(design.created_at).toLocaleDateString()}</p>
+                                        <div class="flex space-x-2">
+                                            <button onclick="app.editCustomDesign(${design.id})" class="flex-1 btn-outline text-sm">
+                                                Edit
+                                            </button>
+                                            <button onclick="app.addCustomDesignToCart(${design.id})" class="flex-1 btn-primary text-sm">
+                                                Add to Cart
+                                            </button>
+                                        </div>
+                                    </div>
+                                `).join('')}
+                            </div>
+                        `}
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+    }
+    
+    generateMiniHandPreview(designData) {
+        if (!designData) return '<i class="fas fa-hand text-gray-400 text-4xl"></i>';
+        
+        return `
+            <svg viewBox="0 0 100 150" width="80" height="120">
+                <path d="M50 12.5 Q45 11.25 40 15 Q35 18.75 32.5 25 L31.25 50 Q30 62.5 31.25 75 L32.5 100 Q33.75 112.5 37.5 120 L45 130 Q50 135 55 130 L62.5 120 Q66.25 112.5 67.5 100 L68.75 75 Q70 62.5 68.75 50 L67.5 25 Q65 18.75 60 15 Q55 11.25 50 12.5 Z" 
+                      fill="#F4C2A1" stroke="#E0B598"/>
+                ${Array(10).fill(0).map((_, i) => {
+                    const positions = [
+                        {x: 35, y: 20}, {x: 41.25, y: 17.5}, {x: 47.5, y: 16.25}, {x: 53.75, y: 17.5}, {x: 60, y: 20},
+                        {x: 35, y: 95}, {x: 41.25, y: 92.5}, {x: 47.5, y: 91.25}, {x: 53.75, y: 92.5}, {x: 60, y: 95}
+                    ];
+                    const nailColor = designData.nails?.[i]?.color || '#FF69B4';
+                    return `<ellipse cx="${positions[i].x}" cy="${positions[i].y}" rx="3" ry="4.5" fill="${nailColor}" stroke="#000" stroke-width="0.2">`;
+                }).join('')}
+            </svg>
+        `;
+    }
+    
+    // === ADVANCED FILTERING SYSTEM ===
+    
+    setupAdvancedFilters() {
+        // Sort dropdown functionality
+        document.addEventListener('click', (e) => {
+            if (e.target.closest('.sort-dropdown-btn')) {
+                e.preventDefault();
+                this.toggleDropdown('sort');
+            }
+            
+            if (e.target.closest('.sort-option')) {
+                const sortType = e.target.dataset.sort;
+                this.applySorting(sortType);
+            }
+            
+            // View toggle
+            if (e.target.closest('.view-toggle')) {
+                const viewType = e.target.dataset.view;
+                this.switchView(viewType);
+            }
+            
+            // Filter tags
+            if (e.target.closest('.filter-tag')) {
+                const filterType = e.target.dataset.filter;
+                this.applyFilter(filterType);
+            }
+        });
+    }
+    
+    async applySorting(sortType) {
+        this.currentSort = sortType;
+        
+        // Update UI
+        document.querySelector('.sort-dropdown-btn span').textContent = 
+            document.querySelector(`[data-sort="${sortType}"]`).textContent;
+        
+        // Hide dropdown
+        document.querySelector('.dropdown-menu[data-dropdown="sort"]')?.classList.add('hidden');
+        
+        // Apply sorting
+        await this.loadAndSortDesigns();
+        
+        this.showNotification(`Sorted by ${sortType}`, 'info');
+    }
+    
+    async loadAndSortDesigns() {
+        this.showDesignGridLoader();
+        
+        try {
+            let url = `/api/designs?sort=${this.currentSort}&limit=12`;
+            if (this.currentFilter !== 'all') {
+                url += `&filter=${this.currentFilter}`;
+            }
+            
+            const response = await axios.get(url);
+            if (response.data.success) {
+                this.designs = response.data.data;
+                this.renderFeaturedDesigns();
+            }
+        } catch (error) {
+            console.error('Sort error:', error);
+            this.showNotification('Failed to sort designs', 'error');
+        }
+    }
+    
+    switchView(viewType) {
+        this.currentView = viewType;
+        
+        // Update view toggle UI
+        document.querySelectorAll('.view-toggle').forEach(btn => {
+            btn.classList.remove('active');
+        });
+        document.querySelector(`[data-view="${viewType}"]`)?.classList.add('active');
+        
+        // Apply view changes
+        const grid = document.getElementById('design-grid');
+        if (grid) {
+            grid.className = viewType === 'list' ? 
+                'grid grid-cols-1 gap-6' : 
+                'grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6';
+        }
+        
+        this.showNotification(`Switched to ${viewType} view`, 'info');
+    }
+    
+    async applyFilter(filterType) {
+        this.currentFilter = filterType;
+        
+        // Update filter tag UI
+        document.querySelectorAll('.filter-tag').forEach(tag => {
+            tag.classList.remove('active');
+        });
+        document.querySelector(`[data-filter="${filterType}"]`)?.classList.add('active');
+        
+        // Apply filtering
+        await this.loadAndSortDesigns();
+        
+        this.showNotification(`Filtered by ${filterType}`, 'info');
     }
 }
 

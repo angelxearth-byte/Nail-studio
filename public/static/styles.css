@@ -506,6 +506,163 @@ body {
   }
 }
 
+/* Nail Customizer Styles */
+.nail-customizer {
+  @apply bg-white rounded-3xl shadow-strong overflow-hidden;
+}
+
+.hand-template {
+  @apply relative w-full max-w-md mx-auto;
+}
+
+.hand-svg {
+  @apply w-full h-auto;
+}
+
+.nail-area {
+  @apply cursor-pointer transition-all duration-200 hover:opacity-80;
+}
+
+.nail-area.selected {
+  @apply ring-4 ring-primary ring-opacity-50;
+}
+
+.color-palette {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(40px, 1fr));
+  gap: 0.5rem;
+}
+
+.color-swatch {
+  @apply w-10 h-10 rounded-xl border-2 border-gray-200 cursor-pointer transition-all duration-200 hover:scale-110;
+}
+
+.color-swatch.selected {
+  @apply border-primary border-4 shadow-medium;
+}
+
+.pattern-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+  gap: 1rem;
+}
+
+.pattern-option {
+  @apply bg-gray-50 hover:bg-gray-100 border-2 border-gray-200 rounded-xl p-4 cursor-pointer transition-all duration-200 text-center;
+}
+
+.pattern-option.selected {
+  @apply border-primary bg-primary/10;
+}
+
+.shape-selector {
+  @apply flex flex-wrap gap-3;
+}
+
+.shape-option {
+  @apply flex flex-col items-center p-3 bg-gray-50 hover:bg-gray-100 border-2 border-gray-200 rounded-xl cursor-pointer transition-all duration-200;
+}
+
+.shape-option.selected {
+  @apply border-primary bg-primary/10;
+}
+
+.texture-slider {
+  @apply w-full;
+}
+
+.customizer-preview {
+  @apply sticky top-24 bg-white rounded-2xl shadow-soft p-6;
+}
+
+.design-canvas {
+  @apply bg-gray-50 rounded-2xl p-8 text-center;
+}
+
+/* Filter and Sort Styles */
+.filter-tag {
+  @apply bg-gray-100 hover:bg-primary hover:text-white text-muted px-3 py-1.5 rounded-full text-sm font-medium transition-all duration-200 cursor-pointer;
+}
+
+.filter-tag.active {
+  @apply bg-primary text-white;
+}
+
+.sort-option {
+  @apply flex items-center text-sm font-medium;
+}
+
+.view-toggle {
+  @apply text-muted hover:text-dark;
+}
+
+.view-toggle.active {
+  @apply bg-white text-primary shadow-soft;
+}
+
+/* Upload Area */
+.upload-area {
+  @apply border-2 border-dashed border-gray-300 hover:border-primary rounded-2xl p-12 text-center cursor-pointer transition-all duration-200;
+}
+
+.upload-area.dragover {
+  @apply border-primary bg-primary/5;
+}
+
+/* Design Studio Styles */
+.design-studio {
+  @apply grid grid-cols-1 lg:grid-cols-3 gap-8 max-w-7xl mx-auto;
+}
+
+.studio-sidebar {
+  @apply lg:col-span-1 space-y-6;
+}
+
+.studio-preview {
+  @apply lg:col-span-2;
+}
+
+.tool-panel {
+  @apply bg-white rounded-2xl shadow-soft p-6;
+}
+
+.tool-header {
+  @apply flex items-center justify-between pb-4 border-b border-gray-100 mb-4;
+}
+
+.tool-content {
+  @apply space-y-4;
+}
+
+/* Nail Shape SVGs */
+.nail-shape-svg {
+  @apply w-12 h-16 mx-auto mb-2;
+}
+
+/* Animation for design changes */
+.design-transition {
+  transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+/* Responsive adjustments */
+@media (max-width: 768px) {
+  .design-studio {
+    @apply grid-cols-1 gap-4;
+  }
+  
+  .studio-sidebar {
+    @apply order-2;
+  }
+  
+  .studio-preview {
+    @apply order-1;
+  }
+  
+  .customizer-preview {
+    @apply sticky top-16;
+  }
+}
+
 /* Print styles */
 @media print {
   .modal-overlay,

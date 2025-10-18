@@ -11,6 +11,7 @@ import { cartRoutes } from './routes/cart'
 import { orderRoutes } from './routes/orders'
 import { userRoutes } from './routes/user'
 import { subscriptionRoutes } from './routes/subscriptions'
+import { customizerRoutes } from './routes/customizer'
 
 const app = new Hono<{ Bindings: Bindings }>()
 
@@ -33,6 +34,7 @@ app.route('/api/cart', cartRoutes)
 app.route('/api/orders', orderRoutes)
 app.route('/api/user', userRoutes)
 app.route('/api/subscriptions', subscriptionRoutes)
+app.route('/api/customizer', customizerRoutes)
 
 // Main page route
 app.get('/', (c) => {
@@ -120,10 +122,38 @@ app.get('/', (c) => {
                                         <span>Portfolio</span>
                                         <div class="w-0 group-hover:w-full h-0.5 bg-primary transition-all duration-300"></div>
                                     </a>
-                                    <a href="#custom" class="nav-link group">
-                                        <span>Custom</span>
-                                        <div class="w-0 group-hover:w-full h-0.5 bg-primary transition-all duration-300"></div>
-                                    </a>
+                                    <div class="relative group">
+                                        <button class="nav-link group flex items-center" onclick="app.toggleDesignMenu(event)">
+                                            <span>Design Studio</span>
+                                            <i class="fas fa-chevron-down ml-1 text-xs transition-transform group-hover:rotate-180"></i>
+                                            <div class="w-0 group-hover:w-full h-0.5 bg-primary transition-all duration-300"></div>
+                                        </button>
+                                        <div id="design-menu" class="absolute top-full left-0 mt-2 w-64 bg-white border border-gray-100 rounded-xl shadow-strong opacity-0 invisible transform translate-y-2 transition-all duration-200 z-50">
+                                            <div class="p-2">
+                                                <a href="#" onclick="app.openCustomizer()" class="flex items-center px-4 py-3 text-dark hover:bg-gray-50 rounded-lg transition-colors">
+                                                    <i class="fas fa-palette text-primary mr-3"></i>
+                                                    <div>
+                                                        <div class="font-medium">Custom Designer</div>
+                                                        <div class="text-xs text-muted">Create your own design</div>
+                                                    </div>
+                                                </a>
+                                                <a href="#" onclick="app.openUploader()" class="flex items-center px-4 py-3 text-dark hover:bg-gray-50 rounded-lg transition-colors">
+                                                    <i class="fas fa-upload text-secondary mr-3"></i>
+                                                    <div>
+                                                        <div class="font-medium">Upload Design</div>
+                                                        <div class="text-xs text-muted">Submit your artwork</div>
+                                                    </div>
+                                                </a>
+                                                <a href="#" onclick="app.showMyDesigns()" class="flex items-center px-4 py-3 text-dark hover:bg-gray-50 rounded-lg transition-colors">
+                                                    <i class="fas fa-folder text-accent mr-3"></i>
+                                                    <div>
+                                                        <div class="font-medium">My Designs</div>
+                                                        <div class="text-xs text-muted">View saved creations</div>
+                                                    </div>
+                                                </a>
+                                            </div>
+                                        </div>
+                                    </div>
                                     <a href="#subscriptions" class="nav-link group">
                                         <span>Plans</span>
                                         <div class="w-0 group-hover:w-full h-0.5 bg-primary transition-all duration-300"></div>
@@ -333,23 +363,72 @@ app.get('/', (c) => {
                         <p class="text-xl text-muted max-w-2xl mx-auto">Handpicked by our expert artists and loved by thousands of customers</p>
                     </div>
                     
-                    <!-- Category Filter -->
-                    <div class="flex flex-wrap justify-center gap-3 mb-12">
-                        <button class="category-filter active" data-category="all">
-                            All Designs
-                        </button>
-                        <button class="category-filter" data-category="french">
-                            French Classic
-                        </button>
-                        <button class="category-filter" data-category="abstract">
-                            Abstract Art
-                        </button>
-                        <button class="category-filter" data-category="glitter">
-                            Glitter & Glam
-                        </button>
-                        <button class="category-filter" data-category="floral">
-                            Floral
-                        </button>
+                    <!-- Advanced Filters -->
+                    <div class="bg-white rounded-2xl shadow-soft p-6 mb-12">
+                        <div class="flex flex-wrap items-center justify-between gap-4 mb-6">
+                            <div class="flex flex-wrap gap-3">
+                                <button class="category-filter active" data-category="all">All Designs</button>
+                                <button class="category-filter" data-category="1">French Classic</button>
+                                <button class="category-filter" data-category="2">Abstract Art</button>
+                                <button class="category-filter" data-category="5">Glitter & Glam</button>
+                                <button class="category-filter" data-category="6">Floral</button>
+                                <button class="category-filter" data-category="4">Minimalist</button>
+                            </div>
+                            
+                            <div class="flex items-center space-x-4">
+                                <!-- Sort Dropdown -->
+                                <div class="relative">
+                                    <button id="sort-btn" class="flex items-center space-x-2 bg-gray-50 hover:bg-gray-100 px-4 py-2 rounded-lg transition-colors" onclick="app.toggleSortMenu()">
+                                        <span class="text-sm font-medium">Sort by</span>
+                                        <i class="fas fa-chevron-down text-xs"></i>
+                                    </button>
+                                    <div id="sort-menu" class="absolute top-full right-0 mt-2 w-48 bg-white border border-gray-100 rounded-xl shadow-strong opacity-0 invisible transform translate-y-2 transition-all duration-200 z-50">
+                                        <div class="p-2">
+                                            <button class="sort-option w-full text-left px-4 py-2 hover:bg-gray-50 rounded-lg transition-colors" data-sort="popularity">
+                                                <i class="fas fa-fire text-accent mr-2"></i>Most Popular
+                                            </button>
+                                            <button class="sort-option w-full text-left px-4 py-2 hover:bg-gray-50 rounded-lg transition-colors" data-sort="newest">
+                                                <i class="fas fa-clock text-primary mr-2"></i>Newest First
+                                            </button>
+                                            <button class="sort-option w-full text-left px-4 py-2 hover:bg-gray-50 rounded-lg transition-colors" data-sort="price_low">
+                                                <i class="fas fa-arrow-up text-success mr-2"></i>Price: Low to High
+                                            </button>
+                                            <button class="sort-option w-full text-left px-4 py-2 hover:bg-gray-50 rounded-lg transition-colors" data-sort="price_high">
+                                                <i class="fas fa-arrow-down text-danger mr-2"></i>Price: High to Low
+                                            </button>
+                                            <button class="sort-option w-full text-left px-4 py-2 hover:bg-gray-50 rounded-lg transition-colors" data-sort="seasonal">
+                                                <i class="fas fa-snowflake text-secondary mr-2"></i>Seasonal Trends
+                                            </button>
+                                            <button class="sort-option w-full text-left px-4 py-2 hover:bg-gray-50 rounded-lg transition-colors" data-sort="fashion">
+                                                <i class="fas fa-star text-accent mr-2"></i>In Fashion
+                                            </button>
+                                            <button class="sort-option w-full text-left px-4 py-2 hover:bg-gray-50 rounded-lg transition-colors" data-sort="classic">
+                                                <i class="fas fa-gem text-primary mr-2"></i>Classic Styles
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- View Toggle -->
+                                <div class="flex bg-gray-100 rounded-lg p-1">
+                                    <button class="view-toggle active px-3 py-1 rounded text-sm transition-all" data-view="grid">
+                                        <i class="fas fa-th"></i>
+                                    </button>
+                                    <button class="view-toggle px-3 py-1 rounded text-sm transition-all" data-view="list">
+                                        <i class="fas fa-list"></i>
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                        
+                        <!-- Filter Tags -->
+                        <div class="flex flex-wrap gap-2">
+                            <button class="filter-tag" data-filter="premium">Premium Only</button>
+                            <button class="filter-tag" data-filter="new">New Arrivals</button>
+                            <button class="filter-tag" data-filter="trending">Trending Now</button>
+                            <button class="filter-tag" data-filter="easy">Easy Application</button>
+                            <button class="filter-tag" data-filter="custom">Custom Designs</button>
+                        </div>
                     </div>
                     
                     <div id="design-grid" class="design-grid mb-12">
